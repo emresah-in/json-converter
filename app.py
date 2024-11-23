@@ -1,9 +1,11 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, make_response
 from json_converter import create_word_document, create_pdf_document
 import json
 from io import BytesIO
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/')
 def home():
@@ -28,31 +30,26 @@ def convert():
             return {'error': 'Invalid format. Use "word", "pdf", or "both"'}, 400
 
         # Create documents in memory
-        if output_format in ['word', 'both']:
+        if output_format == 'word':
             docx_buffer = BytesIO()
             create_word_document(json_data, docx_buffer)
             docx_buffer.seek(0)
+            
+            response = make_response(docx_buffer.getvalue())
+            response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            response.headers['Content-Disposition'] = 'attachment; filename=document.docx'
+            return response
 
-        if output_format in ['pdf', 'both']:
+        elif output_format == 'pdf':
             pdf_buffer = BytesIO()
             create_pdf_document(json_data, pdf_buffer)
             pdf_buffer.seek(0)
+            
+            response = make_response(pdf_buffer.getvalue())
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = 'attachment; filename=document.pdf'
+            return response
 
-        # Return the appropriate file(s)
-        if output_format == 'word':
-            return send_file(
-                docx_buffer,
-                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                as_attachment=True,
-                download_name='document.docx'
-            )
-        elif output_format == 'pdf':
-            return send_file(
-                pdf_buffer,
-                mimetype='application/pdf',
-                as_attachment=True,
-                download_name='document.pdf'
-            )
         else:  # both
             return {
                 'message': 'Documents created successfully',
