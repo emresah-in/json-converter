@@ -9,15 +9,16 @@ API_URL = "https://json-converter-sem2.onrender.com"
 def load_test_json():
     with open('test.json', 'r', encoding='utf-8') as f:
         content = f.read().strip()
-        # If the content is wrapped in quotes, parse it as a JSON string
-        if content.startswith('"') and content.endswith('"'):
-            # Remove the outer quotes and parse
-            content = content[1:-1]
-            # Parse the JSON string
+        try:
+            # First, try parsing as regular JSON
             return json.loads(content)
-        else:
-            # Parse as regular JSON
-            return json.loads(content)
+        except json.JSONDecodeError:
+            # If that fails, try parsing the string as JSON
+            if content.startswith('"') and content.endswith('"'):
+                # Remove outer quotes and unescape the inner JSON string
+                inner_json = content[1:-1].encode().decode('unicode_escape')
+                return json.loads(inner_json)
+            raise
 
 def test_conversion():
     print("\nTesting document conversion...")
