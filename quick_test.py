@@ -9,28 +9,27 @@ API_URL = "https://json-converter-sem2.onrender.com"
 def load_test_json():
     with open('test.json', 'r', encoding='utf-8') as f:
         content = f.read().strip()
-        try:
-            # First, try parsing as regular JSON
-            return json.loads(content)
-        except json.JSONDecodeError:
-            # If that fails, try parsing the string as JSON
-            if content.startswith('"') and content.endswith('"'):
-                # Remove outer quotes and unescape the inner JSON string
-                inner_json = content[1:-1].encode().decode('unicode_escape')
-                return json.loads(inner_json)
-            raise
+        
+        # If it's a JSON string (starts and ends with quotes), parse it first
+        if content.startswith('"') and content.endswith('"'):
+            # This gives us the inner JSON string
+            content = json.loads(content)
+        
+        # Now parse the actual JSON data
+        return json.loads(content)
 
 def test_conversion():
     print("\nTesting document conversion...")
     try:
-        # Load test data from file
-        test_data = load_test_json()
+        # Load and parse test data
+        json_data = load_test_json()
         print("\nSending JSON data:")
-        print(json.dumps(test_data, indent=2)[:500] + "...")
+        print(json.dumps(json_data, indent=2)[:500] + "...")
         
+        # Send the parsed JSON data directly
         response = requests.post(
             f"{API_URL}/convert",
-            json=test_data,
+            json=json_data,  # requests will handle the JSON encoding
             headers={"Content-Type": "application/json"}
         )
         
