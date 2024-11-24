@@ -24,7 +24,8 @@ def create_word_document(json_data, output):
     
     # Add title if ID exists
     if 'id' in json_data:
-        doc.add_heading(f"Document ID: {json_data['id']}", level=1)
+        doc.add_heading(f"BIM Execution Plan (BEP)", level=1)
+        doc.add_paragraph(f"Document ID: {json_data['id']}")
     
     # Add creation date if exists
     if 'createdAt' in json_data:
@@ -44,10 +45,10 @@ def create_word_document(json_data, output):
         # Add section heading
         doc.add_heading(heading_text, level=2)
         
-        # Add content
+        # Add content with proper paragraph formatting
         paragraph = doc.add_paragraph(str(value))
         paragraph.paragraph_format.first_line_indent = Inches(0.5)
-        doc.add_paragraph()  # Add spacing between sections
+        paragraph.paragraph_format.space_after = Pt(12)  # Add spacing after paragraph
     
     try:
         # Save to file or BytesIO
@@ -67,11 +68,15 @@ def create_pdf_document(json_data, output):
     # Set default font
     pdf.set_font("Times", "", 12)
     
-    # Add title if ID exists
+    # Add title
+    pdf.set_font("Times", "B", 16)
+    pdf.cell(0, 10, "BIM Execution Plan (BEP)", ln=True, align='C')
+    pdf.ln(5)
+    
+    # Add ID if exists
     if 'id' in json_data:
-        pdf.set_font("Times", "B", 16)
+        pdf.set_font("Times", "", 12)
         pdf.cell(0, 10, f"Document ID: {json_data['id']}", ln=True)
-        pdf.ln(5)
     
     # Add creation date if exists
     if 'createdAt' in json_data:
