@@ -16,38 +16,38 @@ def read_json_file(file_path):
 def create_word_document(json_data, output):
     doc = Document()
     
-    # Add legal document styling
+    # Add document styling
     style = doc.styles['Normal']
     style.font.name = 'Times New Roman'
     style.font.size = Pt(12)
     style.paragraph_format.line_spacing = 1.5
     
-    # Add title
-    if 'title' in json_data:
-        doc.add_heading(json_data['title'], level=1)
+    # Add title if ID exists
+    if 'id' in json_data:
+        doc.add_heading(f"Document ID: {json_data['id']}", level=1)
     
-    # Process sections if they exist
-    if 'sections' in json_data:
-        sections = json_data['sections']
-    else:
-        sections = json_data  # Treat the entire data as sections if no 'sections' key
+    # Add creation date if exists
+    if 'createdAt' in json_data:
+        doc.add_paragraph(f"Created: {json_data['createdAt']}")
+        doc.add_paragraph()  # Add spacing
     
-    def process_sections(sections, level=1):
-        for key, value in sections.items():
-            if isinstance(value, dict):
-                # Add section heading
-                doc.add_heading(str(key), level=level)
-                # Process subsections
-                process_sections(value, level + 1)
-            else:
-                # Add section heading and content
-                doc.add_heading(str(key), level=level)
-                paragraph = doc.add_paragraph(str(value))
-                paragraph.paragraph_format.first_line_indent = Inches(0.5)
-                doc.add_paragraph()  # Add spacing
-    
-    # Process the sections
-    process_sections(sections, level=2)
+    # Process all other fields
+    for key, value in json_data.items():
+        # Skip id and createdAt as they're already handled
+        if key in ['id', 'createdAt']:
+            continue
+        
+        # Convert key from camelCase to Title Case for heading
+        heading_text = ''.join(' ' + char if char.isupper() else char for char in key).strip()
+        heading_text = heading_text.title()
+        
+        # Add section heading
+        doc.add_heading(heading_text, level=2)
+        
+        # Add content
+        paragraph = doc.add_paragraph(str(value))
+        paragraph.paragraph_format.first_line_indent = Inches(0.5)
+        doc.add_paragraph()  # Add spacing between sections
     
     try:
         # Save to file or BytesIO
@@ -67,37 +67,36 @@ def create_pdf_document(json_data, output):
     # Set default font
     pdf.set_font("Times", "", 12)
     
-    # Add title
-    if 'title' in json_data:
+    # Add title if ID exists
+    if 'id' in json_data:
         pdf.set_font("Times", "B", 16)
-        pdf.cell(0, 10, json_data['title'], ln=True)
+        pdf.cell(0, 10, f"Document ID: {json_data['id']}", ln=True)
         pdf.ln(5)
     
-    # Process sections if they exist
-    if 'sections' in json_data:
-        sections = json_data['sections']
-    else:
-        sections = json_data  # Treat the entire data as sections if no 'sections' key
+    # Add creation date if exists
+    if 'createdAt' in json_data:
+        pdf.set_font("Times", "", 12)
+        pdf.cell(0, 10, f"Created: {json_data['createdAt']}", ln=True)
+        pdf.ln(5)
     
-    def process_sections(sections, level=1):
-        for key, value in sections.items():
-            if isinstance(value, dict):
-                # Add section heading
-                pdf.set_font("Times", "B", 14 - level)
-                pdf.cell(0, 10, str(key), ln=True)
-                # Process subsections
-                process_sections(value, level + 1)
-            else:
-                # Add section heading
-                pdf.set_font("Times", "B", 14 - level)
-                pdf.cell(0, 10, str(key), ln=True)
-                # Add content
-                pdf.set_font("Times", "", 12)
-                pdf.multi_cell(0, 10, str(value))
-                pdf.ln(5)
-    
-    # Process the sections
-    process_sections(sections, level=1)
+    # Process all other fields
+    for key, value in json_data.items():
+        # Skip id and createdAt as they're already handled
+        if key in ['id', 'createdAt']:
+            continue
+        
+        # Convert key from camelCase to Title Case for heading
+        heading_text = ''.join(' ' + char if char.isupper() else char for char in key).strip()
+        heading_text = heading_text.title()
+        
+        # Add section heading
+        pdf.set_font("Times", "B", 14)
+        pdf.cell(0, 10, heading_text, ln=True)
+        
+        # Add content
+        pdf.set_font("Times", "", 12)
+        pdf.multi_cell(0, 10, str(value))
+        pdf.ln(5)  # Add spacing between sections
     
     try:
         # Save to file or BytesIO

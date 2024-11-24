@@ -6,26 +6,16 @@ import time
 # Your Render URL
 API_URL = "https://json-converter-sem2.onrender.com"
 
-# Test data with simplified structure
-test_data = {
-    "title": "Sample Document",
-    "sections": {
-        "Introduction": "This is an introduction to our document.",
-        "Main Content": {
-            "Section 1": "This is the first main section.",
-            "Section 2": "This is the second main section.",
-            "Subsections": {
-                "Subsection 2.1": "This is a subsection.",
-                "Subsection 2.2": "This is another subsection."
-            }
-        },
-        "Conclusion": "This is the conclusion of our document."
-    }
-}
+def load_test_json():
+    with open('test.json', 'r', encoding='utf-8') as f:
+        return json.loads(f.read())
 
 def test_conversion():
     print("\nTesting document conversion...")
     try:
+        # Load test data from file
+        test_data = load_test_json()
+        
         response = requests.post(
             f"{API_URL}/convert",
             json=test_data,
