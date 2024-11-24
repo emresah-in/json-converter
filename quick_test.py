@@ -1,20 +1,25 @@
 import requests
 import json
 import webbrowser
+import time
 
 # Your Render URL
 API_URL = "https://json-converter-sem2.onrender.com"
 
-# Test data
+# Test data with simplified structure
 test_data = {
-    "title": "Quick Test Document",
+    "title": "Sample Document",
     "sections": {
-        "Introduction": "This is a test of the JSON converter API.",
-        "Chapter 1": {
-            "Section 1.1": "This is the first section.",
-            "Section 1.2": "This is the second section."
+        "Introduction": "This is an introduction to our document.",
+        "Main Content": {
+            "Section 1": "This is the first main section.",
+            "Section 2": "This is the second main section.",
+            "Subsections": {
+                "Subsection 2.1": "This is a subsection.",
+                "Subsection 2.2": "This is another subsection."
+            }
         },
-        "Conclusion": "This is the end of our test document."
+        "Conclusion": "This is the conclusion of our document."
     }
 }
 
@@ -30,15 +35,21 @@ def test_conversion():
         if response.status_code == 200:
             result = response.json()
             print("✓ Success!")
-            print(f"Download URL: {result['download_url']}")
-            print(f"Expires in: {result['expires_in']}")
             
-            # Automatically open the download URL in browser
-            webbrowser.open(result['download_url'])
+            # Handle both old and new response formats
+            if 'download_url' in result:
+                print(f"Download URL: {result['download_url']}")
+                print(f"Expires in: {result['expires_in']}")
+                webbrowser.open(result['download_url'])
+            else:
+                print("Response:")
+                print(json.dumps(result, indent=2))
         else:
             print(f"Error: {response.status_code}")
             try:
-                print(response.json())
+                error_data = response.json()
+                print("Error response:")
+                print(json.dumps(error_data, indent=2))
             except:
                 print(response.text[:200])
     except Exception as e:
@@ -56,6 +67,9 @@ def test_api_health():
 if __name__ == "__main__":
     # First check if API is running
     test_api_health()
+    
+    print("\nWaiting for deployment to complete...")
+    time.sleep(5)  # Wait a bit for deployment
     
     # Test conversion
     test_conversion()
