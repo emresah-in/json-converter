@@ -5,7 +5,6 @@ from io import BytesIO
 from flask_cors import CORS
 import os
 import uuid
-from datetime import datetime, timedelta
 import tempfile
 import logging
 
@@ -17,9 +16,11 @@ app = Flask(__name__)
 CORS(app)
 
 # Use system temp directory
-UPLOAD_FOLDER = tempfile.gettempdir()
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'generated_files')
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-# Store file information with expiration time
+# Store file information
 file_storage = {}
 
 @app.route('/')
@@ -28,7 +29,9 @@ def home():
         'message': 'JSON Converter API is running',
         'endpoints': {
             '/convert': 'POST - Convert JSON to Word/PDF documents',
-            '/download/<file_id>': 'GET - Download generated document'
+            '/download/<file_id>': 'GET - Download generated document',
+            '/delete/<file_id>': 'DELETE - Delete a generated document',
+            '/files': 'GET - List all generated files'
         }
     }
 
@@ -68,17 +71,18 @@ def convert():
             docx_buffer.seek(0)
             logger.debug("Word document created successfully")
             
-            # Save file temporarily
+            # Save file permanently
             filename = f"{file_id}.docx"
             filepath = os.path.join(UPLOAD_FOLDER, filename)
             with open(filepath, 'wb') as f:
                 f.write(docx_buffer.getvalue())
             logger.debug(f"Document saved to {filepath}")
             
-            # Store file info with 15-minute expiration
+            # Store file info
             file_storage[file_id] = {
                 'filepath': filepath,
-                'expires_at': datetime.now() + timedelta(minutes=15)
+                'filename': filename,
+                'created_at': json_data.get('createdAt', 'Not specified')
             }
             
             # Generate download URL
@@ -87,8 +91,8 @@ def convert():
             
             return {
                 'message': 'Document created successfully',
-                'download_url': download_url,
-                'expires_in': '15 minutes'
+                'file_id': file_id,
+                'download_url': download_url
             }
 
         except Exception as e:
@@ -102,50 +106,59 @@ def convert():
 @app.route('/download/<file_id>')
 def download_file(file_id):
     logger.debug(f"Download requested for file ID: {file_id}")
-    # Check if file exists and hasn't expired
+    # Check if file exists
     file_info = file_storage.get(file_id)
-    if not file_info:
+    if not file_info or not os.path.exists(file_info['filepath']):
         logger.error(f"File not found: {file_id}")
         return {'error': 'File not found'}, 404
-    
-    if datetime.now() > file_info['expires_at']:
-        # Clean up expired file
-        try:
-            os.remove(file_info['filepath'])
-            logger.debug(f"Removed expired file: {file_info['filepath']}")
-        except Exception as e:
-            logger.error(f"Error removing expired file: {str(e)}")
-        del file_storage[file_id]
-        return {'error': 'File has expired'}, 410
     
     try:
         return send_file(
             file_info['filepath'],
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             as_attachment=True,
-            download_name='document.docx'
+            download_name=file_info['filename']
         )
     except Exception as e:
         logger.error(f"Error sending file: {str(e)}")
         return {'error': str(e)}, 500
 
-# Cleanup function for expired files
-def cleanup_expired_files():
-    current_time = datetime.now()
-    expired_files = [fid for fid, info in file_storage.items() 
-                    if current_time > info['expires_at']]
+@app.route('/delete/<file_id>', methods=['DELETE'])
+def delete_file(file_id):
+    logger.debug(f"Delete requested for file ID: {file_id}")
+    # Check if file exists
+    file_info = file_storage.get(file_id)
+    if not file_info:
+        logger.error(f"File not found: {file_id}")
+        return {'error': 'File not found'}, 404
     
-    for file_id in expired_files:
-        try:
-            os.remove(file_storage[file_id]['filepath'])
-            del file_storage[file_id]
-        except:
-            pass
+    try:
+        # Delete the file
+        if os.path.exists(file_info['filepath']):
+            os.remove(file_info['filepath'])
+        # Remove from storage
+        del file_storage[file_id]
+        return {'message': f'File {file_id} deleted successfully'}
+    except Exception as e:
+        logger.error(f"Error deleting file: {str(e)}")
+        return {'error': str(e)}, 500
 
-# Run cleanup periodically
-@app.before_request
-def before_request():
-    cleanup_expired_files()
+@app.route('/files')
+def list_files():
+    try:
+        files = []
+        for file_id, info in file_storage.items():
+            if os.path.exists(info['filepath']):
+                files.append({
+                    'file_id': file_id,
+                    'filename': info['filename'],
+                    'created_at': info['created_at'],
+                    'download_url': request.host_url.rstrip('/') + url_for('download_file', file_id=file_id)
+                })
+        return {'files': files}
+    except Exception as e:
+        logger.error(f"Error listing files: {str(e)}")
+        return {'error': str(e)}, 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
