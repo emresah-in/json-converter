@@ -37,6 +37,10 @@ def create_word_document(json_data, output):
         # Skip id and createdAt as they're already handled
         if key in ['id', 'createdAt']:
             continue
+            
+        # Skip null values
+        if value is None or value == "null":
+            continue
         
         # Convert key from camelCase to Title Case for heading
         heading_text = ''.join(' ' + char if char.isupper() else char for char in key).strip()
@@ -88,6 +92,10 @@ def create_pdf_document(json_data, output):
     for key, value in json_data.items():
         # Skip id and createdAt as they're already handled
         if key in ['id', 'createdAt']:
+            continue
+            
+        # Skip null values
+        if value is None or value == "null":
             continue
         
         # Convert key from camelCase to Title Case for heading
